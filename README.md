@@ -14,7 +14,7 @@ make it is quite powerful:
 If you are building software that fits the textual interface style, you'll be able
 to create perfoment, _cross-platform_ applications. Launching in under a second is typical.
 Combined with TUI frameworks like OpenTUI, Bubbletea & Ratatui, it is extremely easy 
-to create apps with a developer experience ecosystems, not much different than a webapp.
+to create apps with a developer experience not much different than a webapp's.
 
 ## Giants and their shoulders
 
