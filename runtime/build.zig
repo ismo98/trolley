@@ -17,7 +17,7 @@ const Platform = struct {
                 .root_source_file = b.path("src/platform/linux.zig"),
                 .renderer = .opengl,
                 .font_backend = .fontconfig_freetype,
-                .system_libs = &.{"glfw3"},
+                .system_libs = &.{ "glfw3", "gl" },
                 .lib_only = false,
             },
             .windows => .{

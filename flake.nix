@@ -3,18 +3,31 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    zig = {
+      url = "github:mitchellh/zig-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    zon2nix = {
+      url = "github:jcollie/zon2nix?rev=c28e93f3ba133d4c1b1d65224e2eebede61fd071";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, zig, zon2nix }:
     let
       lib = nixpkgs.lib;
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: lib.genAttrs supportedSystems (system: f rec {
         pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+        zigPkg = zig.packages.${system}."0.15.2";
+        zon2nixPkg = zon2nix.packages.${system}.zon2nix;
       });
     in
     {
-      packages = forEachSupportedSystem ({ pkgs }: {
+      packages = forEachSupportedSystem ({ pkgs, zigPkg, ... }: {
+        deps = pkgs.callPackage ./build.zig.zon.nix {
+          zig_0_15 = zigPkg;
+        };
         default = pkgs.rustPlatform.buildRustPackage {
           pname = "trolley";
           version = (lib.importTOML ./cli/Cargo.toml).package.version;
@@ -39,11 +52,13 @@
         };
       });
 
-      devShells = forEachSupportedSystem ({ pkgs }: {
+      devShells = forEachSupportedSystem ({ pkgs, zigPkg, zon2nixPkg, ... }: {
         default = pkgs.mkShell {
           packages = with pkgs; [
+            claude-code
+
             # trolley build toolchain
-            zig
+            zigPkg
             pkg-config
 
             # Rust (trolley CLI)
@@ -55,6 +70,26 @@
 
             # Task runner
             just
+
+            # CI
+            act
+            zon2nixPkg
+          ]
+          ++ lib.optionals stdenv.hostPlatform.isLinux [
+            # libghostty native deps
+            bzip2
+            expat
+            fontconfig
+            freetype
+            harfbuzz
+            libGL
+            libpng
+            libxml2
+            oniguruma
+            simdutf
+            zlib
+            glslang
+            spirv-cross
 
             # X11 / windowing (for GLFW wrapper)
             glfw
@@ -78,4 +113,9 @@
         };
       });
     };
+
+  nixConfig = {
+    extra-substituters = ["https://trolley.cachix.org"];
+    extra-trusted-public-keys = ["trolley.cachix.org-1:j4ckLzEzdt+r2MOinJiaT/uWS+febWBnho9wqejHQUQ="];
+  };
 }

@@ -12,9 +12,6 @@ on:
 permissions:
   contents: write
 
-env:
-  ZIG_VERSION: "0.15.2"
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -33,83 +30,45 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-  build-linux-windows:
+  build-linux:
     needs: validate
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        target:
-          - x86_64-linux
-          - aarch64-linux
-          - x86_64-windows
-          - aarch64-windows
+        include:
+          - target: x86_64-linux
+            runner: ubuntu-latest
+          - target: aarch64-linux
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Install Zig
-        run: |
-          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" | tar xJ
-          echo "$PWD/zig-linux-x86_64-${ZIG_VERSION}" >> "$GITHUB_PATH"
+      - name: Stage generated Nix files
+        run: cp ghostty/build.zig.zon.nix build.zig.zon.nix && git add -f build.zig.zon.nix
 
-      - name: Install Rust
-        run: |
-          rustup toolchain install stable --profile minimal
-          case "${{ matrix.target }}" in
-            x86_64-linux)    RUST_TARGET="x86_64-unknown-linux-gnu" ;;
-            aarch64-linux)   RUST_TARGET="aarch64-unknown-linux-gnu" ;;
-            x86_64-windows)  RUST_TARGET="x86_64-pc-windows-gnu" ;;
-            aarch64-windows) RUST_TARGET="aarch64-pc-windows-gnu" ;;
-          esac
-          rustup target add "$RUST_TARGET"
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: accept-flake-config = true
 
-      - name: Install cross-compilation toolchains
-        run: |
-          sudo apt-get update -qq
-          case "${{ matrix.target }}" in
-            aarch64-linux)
-              sudo apt-get install -y -qq gcc-aarch64-linux-gnu
-              ;;
-            x86_64-windows)
-              sudo apt-get install -y -qq gcc-mingw-w64-x86-64
-              ;;
-            aarch64-windows)
-              sudo apt-get install -y -qq gcc-aarch64-linux-gnu gcc-mingw-w64
-              ;;
-          esac
+      - uses: cachix/cachix-action@v16
+        with:
+          name: trolley
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      - name: Install just
-        run: |
-          curl -fsSL https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache Zig deps
+        id: deps
+        run: nix build -L -v .#deps && echo "deps=$(readlink ./result)" >> "$GITHUB_OUTPUT"
 
-      - name: Build
-        run: just build --release --target ${{ matrix.target }}
-
-      - name: Package CLI
-        run: |
-          TARGET="${{ matrix.target }}"
-          case "$TARGET" in
-            *-linux)   RUST_TARGET_DIR=$(echo "$TARGET" | sed 's/linux/unknown-linux-gnu/') ;;
-            *-windows) RUST_TARGET_DIR=$(echo "$TARGET" | sed 's/windows/pc-windows-gnu/') ;;
-          esac
-          CLI_DIR="cli/target/$RUST_TARGET_DIR/release"
-          EXE="trolley"
-          if [[ "$TARGET" == *windows* ]]; then EXE="trolley.exe"; fi
-          tar cJf "trolley-cli-${TARGET}.tar.xz" -C "$CLI_DIR" "$EXE"
-
-      - name: Package runtime
-        run: |
-          TARGET="${{ matrix.target }}"
-          EXE="trolley"
-          if [[ "$TARGET" == *windows* ]]; then EXE="trolley.exe"; fi
-          tar cJf "trolley-runtime-${TARGET}.tar.xz" -C "runtime/zig-out-release/bin" "$EXE"
+      - name: Build and package
+        run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-${{ matrix.target }}
-          path: |
-            trolley-cli-${{ matrix.target }}.tar.xz
-            trolley-runtime-${{ matrix.target }}.tar.xz
+          path: dist/trolley-*.tar.xz
 
   build-macos:
     needs: validate
@@ -123,42 +82,36 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Install Zig
-        run: |
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "arm64" ]; then ARCH="aarch64"; fi
-          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-macos-${ARCH}-${ZIG_VERSION}.tar.xz" | tar xJ
-          echo "$PWD/zig-macos-${ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
+      - name: Stage generated Nix files
+        run: cp ghostty/build.zig.zon.nix build.zig.zon.nix && git add -f build.zig.zon.nix
 
-      - name: Install Rust
-        run: rustup toolchain install stable --profile minimal
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: accept-flake-config = true
 
-      - name: Install just
-        run: |
-          curl -fsSL https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: cachix/cachix-action@v16
+        with:
+          name: trolley
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      - name: Build
-        run: just build --release
+      - name: Cache Zig deps
+        id: deps
+        run: nix build -L -v .#deps && echo "deps=$(readlink ./result)" >> "$GITHUB_OUTPUT"
 
-      - name: Package CLI
-        run: |
-          tar cJf "trolley-cli-${{ matrix.target }}.tar.xz" -C "cli/target/release" "trolley"
-
-      - name: Package runtime
-        run: |
-          tar cJf "trolley-runtime-${{ matrix.target }}.tar.xz" -C "runtime/zig-out-release/bin" "trolley"
+      - name: Build and package
+        run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-${{ matrix.target }}
-          path: |
-            trolley-cli-${{ matrix.target }}.tar.xz
-            trolley-runtime-${{ matrix.target }}.tar.xz
+          path: dist/trolley-*.tar.xz
 
   release:
-    needs: [validate, build-linux-windows, build-macos]
+    needs: [validate, build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
