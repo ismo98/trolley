@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1
+
+### Runtime
+
+- [linux] Dependency fix
+
+### CLI
+
+_No changes_
+
 ## 0.3.0
 
 ### Runtime
