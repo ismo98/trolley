@@ -108,6 +108,7 @@
             libxi
             libxinerama
             libxrandr
+            libxrender
           ];
 
           shellHook = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''

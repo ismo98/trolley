@@ -148,6 +148,7 @@ pub fn build(b: *std.Build) !void {
             // NEEDED entry in the binary).
             exe_mod.linkSystemLibrary("x11", .{});
             exe_mod.linkSystemLibrary("xrandr", .{});
+            exe_mod.linkSystemLibrary("xrender", .{});
             exe_mod.linkSystemLibrary("xinerama", .{});
             exe_mod.linkSystemLibrary("xcursor", .{});
             exe_mod.linkSystemLibrary("xi", .{});
