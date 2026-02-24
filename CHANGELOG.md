@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+### Runtime
+
+- [linux] Statically link
+
+### CLI
+
+_No changes_
+
 ## 0.2.0
 
 ### Runtime
