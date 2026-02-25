@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2
+
+### Runtime
+
+- [linux] Statically link CLI binary
+
+### CLI
+
+_No changes_
+
 ## 0.4.1
 
 ### Runtime
