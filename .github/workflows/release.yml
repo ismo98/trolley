@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
@@ -23,14 +24,16 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
       - id: check
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
-          VERSION="${TAG#v}"
           FILE_VERSION=$(cat VERSION | tr -d '[:space:]')
-          if [ "$VERSION" != "$FILE_VERSION" ]; then
-            echo "::error::Tag $TAG does not match VERSION file ($FILE_VERSION)"
-            exit 1
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            TAG="${{ inputs.tag || github.ref_name }}"
+            VERSION="${TAG#v}"
+            if [ "$VERSION" != "$FILE_VERSION" ]; then
+              echo "::error::Tag $TAG does not match VERSION file ($FILE_VERSION)"
+              exit 1
+            fi
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$FILE_VERSION" >> "$GITHUB_OUTPUT"
 
   build-linux:
     needs: validate
@@ -175,6 +178,7 @@ jobs:
           path: dist/trolley-*.tar.xz
 
   release:
+    if: github.event_name != 'pull_request'
     needs: [validate, build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
@@ -198,6 +202,7 @@ jobs:
             trolley-*.tar.xz
 
   update-homebrew:
+    if: github.event_name != 'pull_request'
     needs: [validate, release]
     runs-on: ubuntu-latest
     steps:
