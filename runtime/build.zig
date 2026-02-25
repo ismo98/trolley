@@ -139,6 +139,7 @@ pub fn build(b: *std.Build) !void {
         if (b.lazyDependency("glfw", .{})) |glfw_dep| {
             const glfw_src = glfw_dep.path("src");
             const glfw_include = glfw_dep.path("include");
+            const glfw_deps = glfw_dep.path("deps/wayland");
 
             exe_mod.addIncludePath(glfw_include);
             exe_mod.addIncludePath(glfw_src);
@@ -149,10 +150,45 @@ pub fn build(b: *std.Build) !void {
             exe_mod.linkSystemLibrary("x11", .{});
             exe_mod.linkSystemLibrary("xrandr", .{});
             exe_mod.linkSystemLibrary("xrender", .{});
+            exe_mod.linkSystemLibrary("xfixes", .{});
             exe_mod.linkSystemLibrary("xinerama", .{});
             exe_mod.linkSystemLibrary("xcursor", .{});
             exe_mod.linkSystemLibrary("xi", .{});
             exe_mod.linkSystemLibrary("xext", .{});
+
+            // Wayland headers needed for GLFW compilation (GLFW loads
+            // libwayland-client etc. via dlopen at runtime).
+            exe_mod.linkSystemLibrary("wayland-client", .{});
+            exe_mod.linkSystemLibrary("xkbcommon", .{});
+
+            // Generate Wayland protocol C bindings from XML via wayland-scanner.
+            const wl_protocols = [_][]const u8{
+                "wayland",
+                "viewporter",
+                "xdg-shell",
+                "idle-inhibit-unstable-v1",
+                "pointer-constraints-unstable-v1",
+                "relative-pointer-unstable-v1",
+                "fractional-scale-v1",
+                "xdg-activation-v1",
+                "xdg-decoration-unstable-v1",
+            };
+
+            for (wl_protocols) |protocol| {
+                const xml_path = glfw_deps.path(b, b.fmt("{s}.xml", .{protocol}));
+                // wayland-scanner client-header <xml> <header>
+                const header_cmd = b.addSystemCommand(&.{"wayland-scanner"});
+                header_cmd.addArg("client-header");
+                header_cmd.addFileArg(xml_path);
+                const header = header_cmd.addOutputFileArg(b.fmt("{s}-client-protocol.h", .{protocol}));
+                // wayland-scanner private-code <xml> <code>
+                const code_cmd = b.addSystemCommand(&.{"wayland-scanner"});
+                code_cmd.addArg("private-code");
+                code_cmd.addFileArg(xml_path);
+                const code = code_cmd.addOutputFileArg(b.fmt("{s}-client-protocol-code.h", .{protocol}));
+                exe_mod.addIncludePath(header.dirname());
+                exe_mod.addIncludePath(code.dirname());
+            }
 
             exe_mod.addCSourceFiles(.{
                 .root = glfw_src,
@@ -185,9 +221,14 @@ pub fn build(b: *std.Build) !void {
                     "x11_window.c",
                     "xkb_unicode.c",
                     "glx_context.c",
+                    // Wayland
+                    "wl_init.c",
+                    "wl_monitor.c",
+                    "wl_window.c",
                 },
                 .flags = &.{
                     "-D_GLFW_X11",
+                    "-D_GLFW_WAYLAND",
                     "-D_DEFAULT_SOURCE",
                     "-std=c99",
                 },

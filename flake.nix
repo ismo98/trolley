@@ -109,6 +109,10 @@
             libxinerama
             libxrandr
             libxrender
+            libxfixes
+            # Wayland headers + code generator (needed at compile time for GLFW)
+            wayland
+            wayland-scanner
           ];
 
           shellHook = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
