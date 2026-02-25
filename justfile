@@ -293,6 +293,53 @@ release-runtime *flags:
 # Requires: --target <triple>
 release *flags: (release-cli flags) (release-runtime flags)
 
+# Sanity-test the release artifacts: init a project, bundle-only package
+# Requires: --target <triple>
+sanity-test *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target=""
+    next_is_target=""
+    for flag in {{ flags }}; do
+        if [ -n "$next_is_target" ]; then
+            target="$flag"
+            next_is_target=""
+            continue
+        fi
+        case "$flag" in
+            --target)  next_is_target=1 ;;
+            *)         echo "Unknown flag: $flag" >&2; exit 1 ;;
+        esac
+    done
+    if [ -z "$target" ]; then
+        echo "Error: --target is required" >&2; exit 1
+    fi
+
+    rust_target=$(just _cli-target "$target")
+    exe="trolley"; if [[ "$target" == *-windows ]]; then exe="trolley.exe"; fi
+    cli="{{ justfile_directory() }}/target/$rust_target/release/$exe"
+    runtime="{{ justfile_directory() }}/runtime/zig-out-release/bin/$exe"
+
+    test_dir="{{ justfile_directory() }}/.sanity-test"
+    rm -rf "$test_dir"
+    trap 'rm -rf "$test_dir"' EXIT
+
+    echo "==> trolley init .sanity-test/project"
+    "$cli" init "$test_dir/project"
+
+    if [ ! -f "$test_dir/project/trolley.toml" ]; then
+        echo "Error: trolley.toml was not created" >&2; exit 1
+    fi
+
+    mkdir -p "$test_dir/project/path/to"
+    cp "$cli" "$test_dir/project/path/to/project"
+
+    echo "==> trolley package --bundle-only"
+    TROLLEY_RUNTIME_SOURCE="$runtime" \
+        "$cli" package --bundle-only --config "$test_dir/project/trolley.toml"
+
+    echo "==> Sanity test passed"
+
 # Use like the real CLI: just trolley <args>
 
 # Rebuilds automatically via cargo run
