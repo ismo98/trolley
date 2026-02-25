@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+### Runtime
+
+- [linux] Add Wayland support
+
+### CLI
+
+_No changes_
+
 ## 0.3.1
 
 ### Runtime
