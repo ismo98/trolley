@@ -68,6 +68,9 @@ jobs:
       - name: Build and package
         run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
+      - name: Sanity test
+        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-${{ matrix.target }}
@@ -105,6 +108,9 @@ jobs:
 
       - name: Build and package
         run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
+
+      - name: Sanity test
+        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -171,6 +177,10 @@ jobs:
           done
           echo "::error::Build failed after 3 attempts"
           exit 1
+
+      - name: Sanity test
+        shell: bash
+        run: just sanity-test --target x86_64-windows
 
       - uses: actions/upload-artifact@v4
         with:
