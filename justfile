@@ -8,8 +8,24 @@ _zig-target target:
         *)               echo "{{ target }}" ;;
     esac
 
-# Map trolley target to Rust target triple
-_rust-target target:
+# Map trolley target to Rust CLI target triple.
+# Linux uses musl for a fully static, portable binary.
+_cli-target target:
+    #!/usr/bin/env bash
+    case "{{ target }}" in
+        x86_64-linux)    echo "x86_64-unknown-linux-musl" ;;
+        aarch64-linux)   echo "aarch64-unknown-linux-musl" ;;
+        x86_64-macos)    echo "x86_64-apple-darwin" ;;
+        aarch64-macos)   echo "aarch64-apple-darwin" ;;
+        x86_64-windows)  echo "x86_64-pc-windows-gnu" ;;
+        aarch64-windows) echo "aarch64-pc-windows-gnu" ;;
+        *)               echo "Unknown target: {{ target }}" >&2; exit 1 ;;
+    esac
+
+# Map trolley target to Rust runtime target triple.
+# Linux uses glibc because the config staticlib is linked into the Zig
+# runtime, which needs glibc for dlopen (X11/Wayland/GL).
+_runtime-target target:
     #!/usr/bin/env bash
     case "{{ target }}" in
         x86_64-linux)    echo "x86_64-unknown-linux-gnu" ;;
@@ -47,7 +63,7 @@ build-cli *flags:
         cargo_args="$cargo_args --release"
     fi
     if [ -n "$target" ]; then
-        rust_target=$(just _rust-target "$target")
+        rust_target=$(just _cli-target "$target")
         cargo_args="$cargo_args --target $rust_target"
     fi
     cargo build -p trolley --quiet $cargo_args
@@ -78,7 +94,7 @@ build-config *flags:
         cargo_args="$cargo_args --release"
     fi
     if [ -n "$target" ]; then
-        rust_target=$(just _rust-target "$target")
+        rust_target=$(just _runtime-target "$target")
         cargo_args="$cargo_args --target $rust_target"
     fi
     cargo build -p trolley-config --quiet $cargo_args
@@ -135,7 +151,7 @@ build-runtime *flags:
 
     # Determine config lib path
     if [ -n "$target" ]; then
-        rust_target=$(just _rust-target "$target")
+        rust_target=$(just _runtime-target "$target")
         config_dir="{{ justfile_directory() }}/target/$rust_target/$cargo_profile"
         zig_target="-Dtarget=$(just _zig-target "$target")"
     elif [ -n "${WINDIR:-}" ]; then
@@ -172,7 +188,7 @@ build-runtime *flags:
     elif [ -z "$target" ] && [[ "$(uname -s)" == "Darwin" ]]; then
         is_macos=true
         arch=$(uname -m); if [ "$arch" = "arm64" ]; then arch="aarch64"; fi
-        rust_target=$(just _rust-target "$arch-macos")
+        rust_target=$(just _runtime-target "$arch-macos")
     fi
     if $is_macos; then
         swift_config="debug"
@@ -227,7 +243,7 @@ release-cli *flags:
     TROLLEY_RUNTIME_SOURCE="https://github.com/weedonandscott/trolley/releases/download/v{version}/trolley-runtime-{target}.tar.xz" \
         just build-cli --release --target "$target"
 
-    rust_target=$(just _rust-target "$target")
+    rust_target=$(just _cli-target "$target")
     exe="trolley"; if [[ "$target" == *-windows ]]; then exe="trolley.exe"; fi
     mkdir -p dist
     tar cJf "dist/trolley-cli-${target}.tar.xz" \

@@ -11,14 +11,22 @@
       url = "github:jcollie/zon2nix?rev=c28e93f3ba133d4c1b1d65224e2eebede61fd071";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, zig, zon2nix }:
+  outputs = { self, nixpkgs, zig, zon2nix, rust-overlay }:
     let
       lib = nixpkgs.lib;
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: lib.genAttrs supportedSystems (system: f rec {
-        pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+          overlays = [ rust-overlay.overlays.default ];
+        };
         zigPkg = zig.packages.${system}."0.15.2";
         zon2nixPkg = zon2nix.packages.${system}.zon2nix;
       });
@@ -78,19 +86,28 @@
         };
       });
 
-      devShells = forEachSupportedSystem ({ pkgs, zigPkg, zon2nixPkg, ... }: {
+      devShells = forEachSupportedSystem ({ pkgs, zigPkg, zon2nixPkg, ... }:
+        let
+          # Musl-targeting C compiler for static CLI builds on Linux.
+          # Not added to PATH to avoid conflicts with the host glibc toolchain
+          # used by Zig for the runtime.  Passed to cargo/cc-crate via env vars.
+          muslCC = pkgs.pkgsMusl.stdenv.cc;
+        in {
         default = pkgs.mkShell {
           packages = with pkgs; [
             # trolley build toolchain
             zigPkg
             pkg-config
 
-            # Rust (trolley CLI)
-            cargo
-            rustc
-            rustfmt
-            clippy
-            rust-analyzer
+            # Rust — custom toolchain with musl target for static CLI builds
+            (rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" ];
+              targets = lib.optionals stdenv.hostPlatform.isLinux [
+                (if stdenv.hostPlatform.isx86_64
+                 then "x86_64-unknown-linux-musl"
+                 else "aarch64-unknown-linux-musl")
+              ];
+            })
 
             # Task runner
             just
@@ -115,7 +132,7 @@
             wayland-scanner
           ];
 
-          shellHook = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+          shellHook = lib.optionalString pkgs.stdenv.hostPlatform.isLinux (''
             # GLFW loads X11/Wayland/GL at runtime via dlopen.  On NixOS
             # these live in the Nix store, so set LD_LIBRARY_PATH.
             export LD_LIBRARY_PATH="${lib.makeLibraryPath (with pkgs; [
@@ -129,7 +146,15 @@
               xorg.libXrandr
               wayland
             ])}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          '' + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+          '' + (if pkgs.stdenv.hostPlatform.isx86_64 then ''
+            # Musl C compiler/linker for static CLI builds (not on PATH to
+            # avoid conflicts with glibc toolchain used by Zig runtime).
+            export CC_x86_64_unknown_linux_musl="${muslCC}/bin/cc"
+            export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="${muslCC}/bin/cc"
+          '' else ''
+            export CC_aarch64_unknown_linux_musl="${muslCC}/bin/cc"
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="${muslCC}/bin/cc"
+          '')) + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
             # Ghostty's build.zig eagerly builds for iOS even when we only need
             # macOS. Nix only ships a macOS SDK, so we unset Nix's SDK env vars
             # and let Zig discover the system Xcode which has all Apple SDKs.
